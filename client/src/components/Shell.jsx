@@ -39,9 +39,9 @@ const footer = {
 
 function Logo() {
   return (
-    <span className="font-heading font-black text-2xl tracking-tight">
-      <span className="text-white">Xy</span>
-      <span className="bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">pher</span>
+    <span className="brand-logo" aria-label="Xypher">
+      <span className="brand-logo-base">Xy</span>
+      <span className="brand-logo-accent">pher</span>
     </span>
   );
 }

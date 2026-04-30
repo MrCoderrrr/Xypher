@@ -42,3 +42,107 @@ function Explore() {
   );
 }
 export default Explore;
+
+variant = "ghost"
+className = "mt-4 w-full"
+onClick = {() => { setSearch(""); setCategory(""); setSort("popular"); }}
+          >
+  <RotateCcw size={16} /> Reset
+          </Button >
+        </div >
+      </aside >
+
+  <main className="min-w-0 flex-1">
+    <div className="mb-6 flex items-end justify-between">
+      <div>
+        <h1 className="font-heading text-5xl font-black">Explore Prompts</h1>
+        <p className="mt-2 text-lg text-text-muted">
+          Showing {prompts.length} of {data?.total || 0} prompts
+        </p>
+      </div>
+      <div className="flex rounded-xl border border-border p-1">
+        <button
+          onClick={() => handleLayoutChange("grid")}
+          className={`rounded-lg p-2 transition-all duration-200 ${view === "grid"
+              ? "bg-indigo-500/20 text-cyan"
+              : "text-text-muted hover:text-white"
+            }`}
+        >
+          <Grid2X2 />
+        </button>
+        <button
+          onClick={() => handleLayoutChange("list")}
+          className={`rounded-lg p-2 transition-all duration-200 ${view === "list"
+              ? "bg-indigo-500/20 text-cyan"
+              : "text-text-muted hover:text-white"
+            }`}
+        >
+          <List />
+        </button>
+      </div>
+    </div>
+
+    {isLoading ? (
+      <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <PromptCardSkeleton key={i} />
+        ))}
+      </div>
+    ) : prompts.length ? (
+      <div
+        ref={stageRef}
+        className={`card-stage ${dealPhase === "gather" ? "card-stage-gathering" : ""
+          } ${view === "grid"
+            ? "grid gap-5 md:grid-cols-2 lg:grid-cols-3"
+            : "flex flex-col gap-5"
+          }`}
+      >
+        {prompts.map((p, index) => (
+          <div
+            key={`${dealKey}-${p.id}`}
+            ref={(el) => {
+              cardRefs.current[index] = el;
+            }}
+            className={`card-slot ${dealPhase === "gather" ? "card-gather" : ""} ${dealPhase === "deal" ? "card-deal" : ""
+              }`}
+            style={{
+              animationDelay: `${index * DEAL_STAGGER_MS}ms`,
+              animationFillMode: "both",
+              "--deal-rotate": `${(index % 2 === 0 ? -1 : 1) * (4 + (index % 3) * 3)}deg`,
+              "--gather-rotate": `${(index % 2 === 0 ? 1 : -1) * (3 + (index % 4) * 2)}deg`,
+              "--card-index": index,
+              "--card-count": prompts.length || 1,
+              "--pile-x": pileOffsets[index]?.x || 0,
+              "--pile-y": pileOffsets[index]?.y || 0,
+            }}
+          >
+            <PromptCard {...p} layout={view} />
+          </div>
+        ))}
+      </div>
+    ) : (
+      <EmptyState
+        icon={Search}
+        title="No prompts match your filters"
+        message="Try adjusting your search or resetting filters."
+      />
+    )}
+
+    <div className="mt-8 flex justify-center gap-2">
+      <Button variant="secondary" disabled={page === 1} onClick={() => setPage(page - 1)}>
+        Prev
+      </Button>
+      <Button
+        variant="secondary"
+        disabled={page >= (data?.pages || 1)}
+        onClick={() => setPage(page + 1)}
+      >
+        Next
+      </Button>
+    </div>
+  </main>
+    </div >
+  );
+}
+
+export default Explore;
