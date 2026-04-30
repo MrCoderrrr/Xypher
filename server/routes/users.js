@@ -27,8 +27,20 @@ router.patch("/profile", requireAuth, async (req, res, next) => {
 
 router.get("/library", requireAuth, async (req, res, next) => {
   try {
-    const purchases = await Purchase.find({ buyer: req.user._id }).populate({ path: "prompt", populate: { path: "creator", select: "name avatar" } }).sort({ createdAt: -1 });
-    res.json({ prompts: purchases.map((p) => p.prompt), purchases });
+    const user = await User.findById(req.user._id)
+      .populate({ path: "savedPrompts", populate: { path: "creator", select: "name avatar" } })
+      .populate({ path: "likedPrompts", populate: { path: "creator", select: "name avatar" } });
+
+    const purchases = await Purchase.find({ buyer: req.user._id })
+      .populate({ path: "prompt", populate: { path: "creator", select: "name avatar" } })
+      .sort({ createdAt: -1 });
+      
+    res.json({ 
+      usedPrompts: purchases.map((p) => p.prompt).filter(Boolean),
+      savedPrompts: user.savedPrompts || [],
+      likedPrompts: user.likedPrompts || [],
+      purchases 
+    });
   } catch (e) { next(e); }
 });
 

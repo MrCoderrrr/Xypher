@@ -80,10 +80,35 @@ router.post("/:id/purchase", requireAuth, async (req, res, next) => {
 router.post("/:id/like", requireAuth, async (req, res, next) => {
   try {
     const prompt = await Prompt.findById(req.params.id);
+    if (!prompt) return res.status(404).json({ message: "Prompt not found" });
+    
     const has = prompt.likes.some((id) => String(id) === String(req.user._id));
+    
+    // Toggle in Prompt likes array
     prompt.likes = has ? prompt.likes.filter((id) => String(id) !== String(req.user._id)) : [...prompt.likes, req.user._id];
     await prompt.save();
+    
+    // Toggle in User likedPrompts array
+    const userLikes = req.user.likedPrompts || [];
+    req.user.likedPrompts = has ? userLikes.filter((id) => String(id) !== String(prompt._id)) : [...userLikes, prompt._id];
+    await req.user.save();
+    
     res.json({ liked: !has, likes: prompt.likes.length });
+  } catch (e) { next(e); }
+});
+
+router.post("/:id/save", requireAuth, async (req, res, next) => {
+  try {
+    const prompt = await Prompt.findById(req.params.id);
+    if (!prompt) return res.status(404).json({ message: "Prompt not found" });
+    
+    const userSaved = req.user.savedPrompts || [];
+    const has = userSaved.some((id) => String(id) === String(prompt._id));
+    
+    req.user.savedPrompts = has ? userSaved.filter((id) => String(id) !== String(prompt._id)) : [...userSaved, prompt._id];
+    await req.user.save();
+    
+    res.json({ saved: !has });
   } catch (e) { next(e); }
 });
 

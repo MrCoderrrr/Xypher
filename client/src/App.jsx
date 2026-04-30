@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Toaster } from "react-hot-toast";
 import Home from "./pages/Home";
 import Explore from "./pages/Explore";
+import Creators from "./pages/Creators";
 import PromptDetail from "./pages/PromptDetail";
 import Generate from "./pages/Generate";
 import CreatorProfile from "./pages/CreatorProfile";
@@ -38,6 +39,7 @@ function App() {
             <Route path="/login" element={<LoginPage mode="login" />} />
             <Route path="/register" element={<LoginPage mode="register" />} />
             <Route path="/explore" element={<Explore />} />
+            <Route path="/creators" element={<Creators />} />
             <Route path="/prompt/:id" element={<PromptDetail />} />
             <Route path="/generate/:id" element={<ProtectedRoute><Generate /></ProtectedRoute>} />
             <Route path="/creator/:id" element={<CreatorProfile />} />
