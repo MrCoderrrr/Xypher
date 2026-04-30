@@ -43,13 +43,92 @@ function Count({ value }) {
   return count.toLocaleString();
 }
 
-function MiniCard({ prompt, rotate, delay }) {
+function AnimatedHeroCards({ prompts }) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isHovered, setIsHovered] = useState(false);
+  const scrollTimeout = useRef(null);
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    if (isHovered) return;
+    const timer = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % 4);
+    }, 3000);
+    return () => clearInterval(timer);
+  }, [isHovered]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleWheel = (e) => {
+      e.preventDefault(); // Prevent page scroll
+      
+      if (scrollTimeout.current) return;
+      setIsHovered(true);
+      
+      if (e.deltaY > 0) {
+        setCurrentIndex((prev) => (prev + 1) % 4);
+      } else {
+        setCurrentIndex((prev) => (prev - 1 + 4) % 4);
+      }
+      
+      scrollTimeout.current = setTimeout(() => {
+        scrollTimeout.current = null;
+      }, 600);
+    };
+
+    container.addEventListener('wheel', handleWheel, { passive: false });
+    return () => container.removeEventListener('wheel', handleWheel);
+  }, []);
+
+  const cards = [...(prompts || [])];
+  if (cards.length === 0) return null;
+  while (cards.length < 4) {
+    cards.push(cards[cards.length % prompts.length]);
+  }
+  const displayCards = cards.slice(0, 4);
+
+  const positions = [
+    { x: -120, y: 120, scale: 0.85, zIndex: 10, opacity: 0.6 },
+    { x: 0, y: 0, scale: 1, zIndex: 30, opacity: 1 },
+    { x: 120, y: -120, scale: 0.85, zIndex: 10, opacity: 0.6 },
+    { x: 0, y: 0, scale: 0.75, zIndex: 0, opacity: 0 },
+  ];
+
   return (
-    <div className={`absolute left-1/2 top-1/2 w-80 -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-bg-card p-4 shadow-[0_30px_80px_rgba(99,102,241,0.25)] animate-float ${rotate}`} style={{ animationDelay: delay }}>
-      <img className="aspect-video w-full rounded-xl object-cover" src={prompt.previewImage} alt={prompt.title} />
-      <p className="mt-3 font-heading font-semibold">{prompt.title}</p>
-      <p className="mt-1 line-clamp-2 text-xs text-text-muted">{prompt.description}</p>
-      <div className="mt-3 flex items-center justify-between text-sm"><span className="text-amber-300">★ {prompt.rating}</span><span className="text-cyan">⚡ {prompt.price}</span></div>
+    <div 
+      ref={containerRef}
+      className="absolute left-1/2 top-1/2 h-[400px] w-80 -translate-x-1/2 -translate-y-1/2 cursor-ns-resize"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {displayCards.map((prompt, i) => {
+        const posIndex = (i + currentIndex) % 4;
+        const pos = positions[posIndex];
+        return (
+          <motion.div
+            key={i}
+            className="absolute left-0 top-1/2 w-80 -translate-y-1/2"
+            initial={false}
+            animate={{
+              x: pos.x,
+              y: pos.y,
+              scale: pos.scale,
+              zIndex: pos.zIndex,
+              opacity: pos.opacity,
+            }}
+            transition={{ duration: 0.6, ease: "easeInOut" }}
+          >
+            <div className="animate-float rounded-2xl border border-border bg-bg-card p-4 shadow-[0_30px_80px_rgba(99,102,241,0.25)]" style={{ animationDelay: `${i * 0.5}s` }}>
+              <img className="aspect-video w-full rounded-xl object-cover pointer-events-none" src={prompt.previewImage} alt={prompt.title} />
+              <p className="mt-3 font-heading font-semibold">{prompt.title}</p>
+              <p className="mt-1 line-clamp-2 text-xs text-text-muted">{prompt.description}</p>
+              <div className="mt-3 flex items-center justify-between text-sm"><span className="text-amber-300">★ {prompt.rating}</span><span className="text-cyan">⚡ {prompt.price}</span></div>
+            </div>
+          </motion.div>
+        );
+      })}
     </div>
   );
 }
@@ -62,13 +141,13 @@ function Home() {
 
   return (
     <>
-      <section className="hero-radial dot-grid relative min-h-screen overflow-hidden">
-        <div className="mx-auto grid min-h-screen max-w-[1400px] items-center gap-12 px-4 py-20 sm:px-6 lg:px-8 lg:grid-cols-[1fr_0.9fr]">
+      <section className="hero-radial dot-grid relative overflow-hidden pt-0 lg:pt-4">
+        <div className="mx-auto grid max-w-[1400px] items-start gap-12 px-4 pb-20 pt-8 sm:px-6 lg:px-8 lg:grid-cols-[1fr_0.9fr]">
           <motion.div variants={staggerContainer} initial="hidden" animate="visible">
             <motion.p variants={fadeUp} className="mb-5 inline-flex rounded-full border border-indigo-500/40 bg-indigo-500/10 px-4 py-2 text-sm font-semibold text-indigo-200 animate-glow">✦ The AI Prompt Marketplace</motion.p>
-            <motion.h1 variants={fadeUp} className="font-heading text-5xl font-black leading-[1.05] tracking-tight sm:text-6xl lg:text-7xl">
+            <motion.h1 variants={fadeUp} className="font-heading text-6xl font-black leading-[1.05] tracking-tight sm:text-7xl lg:text-8xl">
               Unlock Better<br />
-              <span className="animate-gradient bg-gradient-to-r from-indigo-400 via-cyan-400 to-indigo-400 bg-clip-text text-transparent">AI Outputs</span><br />
+              <span className="text-orange-500" style={{ fontSize: "inherit", textShadow: "0 0 24px rgba(249,115,22,0.4)" }}>AI Outputs</span><br />
               Instantly.
             </motion.h1>
             <motion.p variants={fadeUp} className="mt-6 max-w-2xl text-xl leading-relaxed text-text-muted">Discover battle-tested prompts from expert creators. Buy once, generate forever. Save hours every week.</motion.p>
@@ -78,11 +157,9 @@ function Home() {
             </motion.div>
             <motion.p variants={fadeUp} className="mt-5 text-sm text-text-muted">⚡ 2,400+ prompts • 840 creators • 18K generations</motion.p>
           </motion.div>
-          <div className="relative hidden h-[620px] lg:block">
+          <div className="relative hidden h-[500px] lg:-mt-[90px] lg:block">
             <div className="absolute left-1/2 top-1/2 h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-500/25 blur-3xl" />
-            {featured && featured[0] && <MiniCard prompt={featured[0]} rotate="-rotate-6 -translate-y-48" delay="0s" />}
-            {featured && featured[1] && <MiniCard prompt={featured[1]} rotate="rotate-0" delay="0.5s" />}
-            {featured && featured[2] && <MiniCard prompt={featured[2]} rotate="rotate-6 translate-y-48" delay="1s" />}
+            {featured && <AnimatedHeroCards prompts={featured} />}
           </div>
         </div>
       </section>

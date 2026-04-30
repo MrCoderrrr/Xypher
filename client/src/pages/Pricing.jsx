@@ -43,8 +43,10 @@ function Pricing() {
       <div className="mt-10 grid gap-6 md:grid-cols-3">
         {tokenPacks.map((pack) => (
           <div key={pack.id} className={`rounded-md border p-6 ${pack.popular ? "border-cyan bg-cyan/10 shadow-glow" : "border-border bg-bg-card"}`}>
-            {pack.popular && <p className="mb-4 text-sm font-semibold text-cyan">Most Popular</p>}
-            <h2 className="font-heading text-2xl font-bold">{pack.name}</h2>
+            <div className="flex items-center gap-3">
+              <h2 className="font-heading text-2xl font-bold">{pack.name}</h2>
+              {pack.popular && <span className="rounded-full bg-cyan/20 px-2.5 py-0.5 text-xs font-semibold text-cyan">Most Popular</span>}
+            </div>
             <p className="mt-2 text-text-muted">{pack.tokens} tokens</p>
             <p className="mt-5 font-heading text-4xl font-bold">₹{pack.priceINR || pack.price}</p>
             <div className="mt-6 space-y-3">{(pack.features || []).map((feature) => <p key={feature} className="flex gap-2 text-sm text-text-muted"><CheckCircle2 className="text-success" size={16} /> {feature}</p>)}</div>
