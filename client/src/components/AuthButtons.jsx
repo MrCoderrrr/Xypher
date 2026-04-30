@@ -9,6 +9,7 @@ function AuthButtons() {
     <div className="group relative">
       <button><Avatar src={user.avatar} name={user.name} size="sm" /></button>
       <div className="absolute right-0 top-10 hidden w-44 rounded-xl border border-border bg-bg-card p-2 shadow-card group-hover:block">
+        <Link className="block rounded-lg px-3 py-2 hover:bg-white/5" to="/dashboard">Profile</Link>
         <button className="block w-full rounded-lg px-3 py-2 text-left hover:bg-white/5">Settings</button>
         <button className="block w-full rounded-lg px-3 py-2 text-left text-red-400 hover:bg-white/5" onClick={logout}>Sign Out</button>
       </div>

@@ -6,23 +6,25 @@ import TokenBadge from "./TokenBadge";
 import AuthButtons from "./AuthButtons";
 import { useAuth } from "../context/AuthContext";
 
-export const RoleContext = createContext({ role: "Buyer", setRole: () => {} });
+export const RoleContext = createContext({ role: "Buyer", setRole: () => { } });
 
 const roleLinks = {
   Buyer: [
     { to: "/", label: "Home" },
-    { to: "/explore", label: "Prompts" },
+    { to: "/explore", label: "Prompt" },
+    { to: "/pricing", label: "Pricing" },
     { to: "/creators", label: "Creators" },
     { to: "/library", label: "Library" },
-    { to: "/pricing", label: "Pricing" },
   ],
   Creator: [
+    { to: "/", label: "Home" },
     { to: "/creator-dashboard", label: "Creator Home" },
     { to: "/upload", label: "Upload" },
     { to: "/payouts", label: "Payouts" },
     { to: "/creator/analytics", label: "Analytics" },
   ],
   Admin: [
+    { to: "/", label: "Home" },
     { to: "/admin", label: "Overview" },
     { to: "/admin/prompts", label: "Prompts" },
     { to: "/admin/creators", label: "Creators" },
@@ -31,7 +33,7 @@ const roleLinks = {
 };
 
 const footer = {
-  Product: ["Explore", "Pricing", "Library", "Dashboard"],
+  Product: ["Prompt", "Pricing", "Library"],
   Creators: ["Creator Dashboard", "Upload Prompt", "Payouts", "Analytics"],
   Company: ["About", "Careers", "Blog", "Contact"],
   Legal: ["Privacy", "Terms", "Refunds", "Security"],
@@ -39,7 +41,7 @@ const footer = {
 
 function Logo() {
   return (
-    <span className="brand-logo" aria-label="Xypher">
+    <span className="brand-logo" aria-label="XYPHER">
       <span className="brand-logo-base">Xy</span>
       <span className="brand-logo-accent">pher</span>
     </span>
@@ -74,18 +76,10 @@ function Shell({ children }) {
     <RoleContext.Provider value={value}>
       <div className="min-h-screen bg-bg-primary text-text-primary">
         <motion.header
-          className={`fixed inset-x-0 top-0 z-40 h-16 backdrop-blur-[20px] transition-all duration-500 ${scrolled ? 'border-b border-white/10 shadow-[0_4px_30px_rgba(0,0,0,0.3)]' : 'border-b border-transparent'}`}
-          style={{ backgroundColor: scrolled ? "rgba(10,15,30,0.85)" : "rgba(10,15,30,0.5)" }}
+          className="fixed inset-x-0 top-0 z-40 h-16 border-b border-border backdrop-blur-[20px]"
+          style={{ backgroundColor: scrolled ? "rgba(10,15,30,0.96)" : "rgba(10,15,30,0.8)" }}
         >
-          {/* Animated Lighting Background */}
-          <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            <div className="nav-orb-1" />
-            <div className="nav-orb-2" />
-            <div className="nav-glow" />
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent to-bg-primary/80" />
-          </div>
-          
-          <div className="mx-auto flex h-16 max-w-[1400px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="mx-auto flex h-16 max-w-[1400px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
             <Link to="/" className="flex items-center gap-3">
               <Logo />
             </Link>

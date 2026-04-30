@@ -1,10 +1,12 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 import { AnimatePresence, motion } from "framer-motion";
 import { Check, CheckCircle2, X } from "lucide-react";
 import Button from "../components/Button";
 import PromptCard from "../components/PromptCard";
-import { categories } from "../data/mockData";
+import api from "../utils/axios";
 
 function UploadPrompt() {
   const [step, setStep] = useState(1);
@@ -12,6 +14,25 @@ function UploadPrompt() {
   const [tags, setTags] = useState(["launch"]);
   const [tagText, setTagText] = useState("");
   const [form, setForm] = useState({ title: "", category: "Writing", description: "", promptContent: "", sampleOutput: "", price: 80 });
+  const { data: categoryData } = useQuery({
+    queryKey: ["prompt-categories"],
+    queryFn: async () => (await api.get("/prompts/categories")).data,
+  });
+  const categories = categoryData?.categories || ["Writing"];
+  const submitMutation = useMutation({
+    mutationFn: async () =>
+      (await api.post("/prompts", {
+        ...form,
+        price: Number(form.price),
+        tags,
+        variables: detected.map((name) => ({ name, label: name, required: true })),
+      })).data,
+    onSuccess: () => {
+      setDone(true);
+      toast.success("Prompt submitted for review");
+    },
+    onError: (error) => toast.error(error?.response?.data?.message || "Failed to submit prompt"),
+  });
   const [errors, setErrors] = useState({});
   const detected = useMemo(() => [...new Set([...form.promptContent.matchAll(/\{\{\s*([\w.-]+)\s*\}\}/g)].map((m) => m[1]))], [form.promptContent]);
   const setField = (key, value) => setForm((current) => ({ ...current, [key]: value }));
@@ -48,7 +69,7 @@ function UploadPrompt() {
             {step === 3 && <div className="grid gap-8 lg:grid-cols-2"><div className="space-y-4"><label className="text-sm font-semibold text-text-muted">Token price<input type="range" min="20" max="200" value={form.price} onChange={(e) => setField("price", e.target.value)} className="mt-4 w-full" /></label><Field label="Price" type="number" value={form.price} error={errors.price} onChange={(v) => setField("price", v)} placeholder="80" /><div className="rounded-xl border border-cyan/25 bg-cyan/10 p-4 text-cyan">You'll earn {Math.round(Number(form.price || 0) * 0.75)} tokens (75%) per sale</div></div><PromptCard id="preview" title={form.title || "Prompt Preview"} description={form.description || "Marketplace card preview updates as you fill the form."} category={form.category} price={Number(form.price || 0)} creatorName="Maya Iyer" creatorInitials="MI" creatorColor="#6366F1" salesCount={0} rating={5} previewImage="https://picsum.photos/seed/preview/400/225" /></div>}
           </motion.div>
         </AnimatePresence>
-        <div className="mt-8 flex justify-between"><Button variant="secondary" disabled={step === 1} onClick={() => setStep((value) => value - 1)}>Back</Button>{step < 3 ? <Button onClick={next}>Next</Button> : <Button onClick={() => validate() && setDone(true)}>Submit for Review</Button>}</div>
+        <div className="mt-8 flex justify-between"><Button variant="secondary" disabled={step === 1} onClick={() => setStep((value) => value - 1)}>Back</Button>{step < 3 ? <Button onClick={next}>Next</Button> : <Button loading={submitMutation.isPending} onClick={() => validate() && submitMutation.mutate()}>Submit for Review</Button>}</div>
       </div>
     </section>
   );

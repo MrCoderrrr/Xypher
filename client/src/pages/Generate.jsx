@@ -1,34 +1,67 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Copy, Sparkles } from "lucide-react";
 import { useParams } from "react-router-dom";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 import Button from "../components/Button";
 import EmptyState from "../components/EmptyState";
-import { enrichedPrompts } from "../data/mockData";
+import api from "../utils/axios";
+import { promptView } from "../utils/shape";
+import { useAuth } from "../context/AuthContext";
 
 function Generate() {
   const { id } = useParams();
-  const prompt = enrichedPrompts.find((item) => item.id === id) || enrichedPrompts[0];
-  const [values, setValues] = useState(Object.fromEntries(prompt.variables.map((variable) => [variable.name, ""])));
+  const { refetchUser } = useAuth();
+  const { data: promptData, isLoading } = useQuery({
+    queryKey: ["prompt", id],
+    queryFn: async () => (await api.get(`/prompts/${id}`)).data,
+    enabled: Boolean(id),
+  });
+  const prompt = promptData?.prompt ? promptView(promptData.prompt) : null;
+  const [values, setValues] = useState({});
   const [errors, setErrors] = useState({});
   const [output, setOutput] = useState("");
-  const [loading, setLoading] = useState(false);
-  const cost = Math.max(1, Math.ceil(prompt.price * 0.1));
+  const cost = prompt ? Math.max(1, Math.ceil(prompt.price * 0.1)) : 0;
 
-  const generated = useMemo(() => prompt.promptContent.replace(/\{\{\s*([\w.-]+)\s*\}\}/g, (_, key) => values[key] || `[${key}]`), [prompt.promptContent, values]);
+  const generatedPreview = useMemo(() => {
+    if (!prompt?.promptContent) return "";
+    return prompt.promptContent.replace(/\{\{\s*([\w.-]+)\s*\}\}/g, (_, key) => values[key] || `[${key}]`);
+  }, [prompt?.promptContent, values]);
+
+  useEffect(() => {
+    if (!prompt) return;
+    setValues(Object.fromEntries((prompt.variables || []).map((variable) => [variable.name, ""])));
+  }, [prompt]);
+
+  const runMutation = useMutation({
+    mutationFn: async (payload) => (await api.post("/generation/run", payload)).data,
+    onSuccess: async (data) => {
+      setOutput(data.output || "");
+      await refetchUser();
+      toast.success("Generation completed");
+    },
+    onError: (error) => {
+      toast.error(error?.response?.data?.message || "Generation failed");
+    },
+  });
 
   const run = () => {
+    if (!prompt) return;
     const nextErrors = {};
     prompt.variables.forEach((variable) => {
       if (!values[variable.name]?.trim()) nextErrors[variable.name] = `${variable.label} required`;
     });
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length) return;
-    setLoading(true);
-    setTimeout(() => {
-      setOutput(generated);
-      setLoading(false);
-    }, 1500);
+    runMutation.mutate({ promptId: prompt.id, variables: values });
   };
+
+  if (isLoading) {
+    return <section className="mx-auto max-w-[1400px] px-4 py-10 sm:px-6 lg:px-8 text-text-muted">Loading prompt...</section>;
+  }
+  if (!prompt) {
+    return <section className="mx-auto max-w-[1400px] px-4 py-10 sm:px-6 lg:px-8 text-danger">Prompt not found.</section>;
+  }
 
   return (
     <section className="mx-auto grid max-w-[1400px] gap-8 px-4 py-10 sm:px-6 lg:px-8 lg:grid-cols-2">
@@ -46,7 +79,9 @@ function Generate() {
           ))}
         </div>
         <div className="mt-6 rounded-md border border-cyan/25 bg-cyan/10 p-4 text-base font-bold text-cyan">This generation costs {cost} tokens</div>
-        <Button className="mt-6 w-full" size="lg" loading={loading} onClick={run}>{loading ? "Generating..." : "Run Generation"}</Button>
+        <Button className="mt-6 w-full" size="lg" loading={runMutation.isPending} onClick={run}>
+          {runMutation.isPending ? "Generating..." : "Run Generation"}
+        </Button>
       </div>
 
       <div className="rounded-md border border-border bg-bg-card p-6 shadow-card">
@@ -57,7 +92,13 @@ function Generate() {
         {output ? (
           <div className="mt-6 animate-fade-in rounded-md border border-border bg-bg-secondary p-5 font-mono text-sm leading-7 text-cyan">{output}</div>
         ) : (
-          <div className="mt-6"><EmptyState icon={Sparkles} title="Your output will appear here" message="Fill the prompt variables and run a generation." /></div>
+          <div className="mt-6">
+            <EmptyState
+              icon={Sparkles}
+              title="Your output will appear here"
+              message={generatedPreview ? "Fill variables and run generation on server." : "Fill the prompt variables and run a generation."}
+            />
+          </div>
         )}
       </div>
     </section>

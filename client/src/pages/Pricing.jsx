@@ -4,6 +4,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import Button from "../components/Button";
 import api from "../utils/axios";
+import { loadRazorpay } from "../utils/razorpay";
 import { useAuth } from "../context/AuthContext";
 
 const faqs = ["Do tokens expire?", "Can I refund a prompt?", "How many tokens does generation cost?", "Can teams share tokens?", "Are creators paid in tokens?", "Can I buy more anytime?"];
@@ -28,7 +29,40 @@ function Pricing() {
         toast.success(`Added ${data.pack.tokens} tokens!`);
         await refetchUser();
       } else {
-        toast.success("Order created! Complete payment to add tokens.");
+        const loaded = await loadRazorpay();
+        if (!loaded || !window.Razorpay) {
+          toast.error("Unable to load Razorpay checkout");
+          return;
+        }
+        const options = {
+          key: data.keyId,
+          amount: data.order.amount,
+          currency: data.order.currency,
+          name: "Xypher",
+          description: `${data.pack.name} token pack`,
+          order_id: data.order.id,
+          handler: async (response) => {
+            try {
+              await api.post("/payments/verify", {
+                packId: data.pack.id,
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+              });
+              await refetchUser();
+              toast.success(`Added ${data.pack.tokens} tokens!`);
+            } catch (error) {
+              toast.error(error.response?.data?.message || "Payment verification failed");
+            }
+          },
+          prefill: {
+            email: user?.email || "",
+            name: user?.name || "",
+          },
+          theme: { color: "#6366F1" },
+        };
+        const rzp = new window.Razorpay(options);
+        rzp.open();
       }
     },
     onError: (err) => toast.error(err.response?.data?.message || "Purchase failed")

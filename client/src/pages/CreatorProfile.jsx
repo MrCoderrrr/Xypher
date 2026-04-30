@@ -10,7 +10,6 @@ import PromptCard from "../components/PromptCard";
 import PromptCardSkeleton from "../components/PromptCardSkeleton";
 import api from "../utils/axios";
 import { useAuth } from "../context/AuthContext";
-import { reviews } from "../data/mockData";
 import { fadeUp, scaleIn, staggerContainer } from "../utils/animations";
 
 function hueFromId(id) {
@@ -40,6 +39,20 @@ function CreatorProfile() {
     },
     enabled: !!profileData
   });
+  const { data: reviewsData } = useQuery({
+    queryKey: ["creator-reviews", id, profileData?.prompts?.length],
+    enabled: !!profileData?.prompts?.length,
+    queryFn: async () => {
+      const topPromptIds = profileData.prompts.slice(0, 5).map((p) => p._id || p.id);
+      const reviewResponses = await Promise.all(
+        topPromptIds.map(async (promptId) => {
+          const { data } = await api.get(`/prompts/${promptId}/reviews`);
+          return data.reviews || [];
+        })
+      );
+      return reviewResponses.flat().slice(0, 20);
+    },
+  });
   const followMutation = useMutation({
     mutationFn: async () => {
       const { data } = await api.post(`/users/follow/${id}`);
@@ -59,7 +72,7 @@ function CreatorProfile() {
     if (sort === "newest") list = [...list].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     return list;
   }, [profileData, query, sort]);
-  const creatorReviews = reviews.filter((review) => review.creatorId === id);
+  const creatorReviews = reviewsData || [];
   const bannerHue = hueFromId(id || "creator");
 
   return (
@@ -109,8 +122,8 @@ function CreatorProfile() {
             )}
             {tab === "Reviews" && (
               <div className="grid gap-8 lg:grid-cols-[280px_1fr]">
-                <div className="rounded-xl border border-border bg-bg-card p-6"><p className="font-heading text-5xl font-bold">{creator.avgRating}</p><div className="mt-2 flex text-amber-300">{Array.from({ length: 5 }).map((_, i) => <Star key={i} fill="currentColor" />)}</div>{[60,25,10,4,1].map((w, i) => <div key={i} className="mt-4 flex items-center gap-3 text-sm text-text-muted"><span>{5 - i}★</span><div className="h-2 flex-1 rounded-full bg-bg-elevated"><div className="h-full rounded-full bg-indigo-500" style={{ width: `${w}%` }} /></div></div>)}</div>
-                <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="space-y-4">{creatorReviews.map((review) => <motion.div variants={fadeUp} key={review.id} className="rounded-xl border border-border bg-bg-card p-5"><div className="flex items-center justify-between"><div className="flex items-center gap-3"><Avatar initials={review.reviewerInitials} name={review.reviewerName} /><div><p className="font-semibold">{review.reviewerName}</p><p className="text-xs text-text-muted">{review.date}</p></div></div><div className="flex text-amber-300">{Array.from({ length: review.rating }).map((_, i) => <Star key={i} size={15} fill="currentColor" />)}</div></div><p className="mt-3 text-text-muted">"{review.text}"</p></motion.div>)}</motion.div>
+                <div className="rounded-xl border border-border bg-bg-card p-6"><p className="font-heading text-5xl font-bold">{creator.avgRating}</p><div className="mt-2 flex text-amber-300">{Array.from({ length: 5 }).map((_, i) => <Star key={i} fill="currentColor" />)}</div>{[60, 25, 10, 4, 1].map((w, i) => <div key={i} className="mt-4 flex items-center gap-3 text-sm text-text-muted"><span>{5 - i}★</span><div className="h-2 flex-1 rounded-full bg-bg-elevated"><div className="h-full rounded-full bg-indigo-500" style={{ width: `${w}%` }} /></div></div>)}</div>
+                <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="space-y-4">{creatorReviews.map((review) => <motion.div variants={fadeUp} key={review._id} className="rounded-xl border border-border bg-bg-card p-5"><div className="flex items-center justify-between"><div className="flex items-center gap-3"><Avatar src={review.reviewer?.avatar} name={review.reviewer?.name} /><div><p className="font-semibold">{review.reviewer?.name || "Anonymous"}</p><p className="text-xs text-text-muted">{review.createdAt ? new Date(review.createdAt).toLocaleDateString() : "-"}</p></div></div><div className="flex text-amber-300">{Array.from({ length: review.rating || 0 }).map((_, i) => <Star key={i} size={15} fill="currentColor" />)}</div></div><p className="mt-3 text-text-muted">"{review.text}"</p></motion.div>)}</motion.div>
               </div>
             )}
             {tab === "About" && (

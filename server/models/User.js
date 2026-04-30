@@ -17,8 +17,6 @@ const userSchema = new mongoose.Schema(
     totalEarnings: { type: Number, default: 0 },
     availableBalance: { type: Number, default: 0 },
     followers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
-    savedPrompts: [{ type: mongoose.Schema.Types.ObjectId, ref: "Prompt" }],
-    likedPrompts: [{ type: mongoose.Schema.Types.ObjectId, ref: "Prompt" }],
     createdAt: { type: Date, default: Date.now },
   },
   { versionKey: false }

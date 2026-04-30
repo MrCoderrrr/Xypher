@@ -1,9 +1,23 @@
 import { BadgeIndianRupee, Clock, Sparkles, Users, Wallet, Wand2 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import StatCard from "../components/StatCard";
-import { platformStats } from "../data/mockData";
+import api from "../utils/axios";
 
 function AdminDashboard() {
+  const { data } = useQuery({
+    queryKey: ["admin-stats"],
+    queryFn: async () => (await api.get("/admin/stats")).data,
+  });
+  const platformStats = data?.stats || {
+    users: 0,
+    creators: 0,
+    prompts: 0,
+    pendingPrompts: 0,
+    pendingPayouts: 0,
+    generations: 0,
+    platformEarnings: 0,
+  };
   const stats = [
     { icon: Users, label: "Users", value: platformStats.users.toLocaleString(), trend: "+12%" },
     { icon: Users, label: "Creators", value: platformStats.creators, trend: "+8%" },

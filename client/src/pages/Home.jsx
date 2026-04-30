@@ -8,7 +8,6 @@ import PromptCard from "../components/PromptCard";
 import PromptCardSkeleton from "../components/PromptCardSkeleton";
 import Avatar from "../components/Avatar";
 import api from "../utils/axios";
-import { categories, testimonials } from "../data/mockData";
 import { fadeUp, scaleIn, slideInLeft, staggerContainer } from "../utils/animations";
 
 const fetchFeaturedPrompts = async () => {
@@ -17,11 +16,17 @@ const fetchFeaturedPrompts = async () => {
 };
 
 const fetchStats = async () => {
-  const { data } = await api.get("/admin/stats").catch(() => ({ data: { prompts: 2400, creators: 840, generations: 18000, avgRating: 4.9 } }));
-  return data;
+  const { data } = await api.get("/admin/stats").catch(() => ({ data: { stats: { prompts: 2400, creators: 840, generations: 18000, avgRating: 4.9 } } }));
+  return data.stats || data;
 };
 
 const categoryIcons = { Writing: PenTool, Coding: Code2, Marketing: Megaphone, Image, Video, Business: TrendingUp, Education: GraduationCap, SEO: Search, "Social Media": Play };
+const heroFallbackCards = [
+  { id: "hero-1", title: "High-CTR Ad Variations", description: "Generate social ads with angle testing.", previewImage: "https://picsum.photos/seed/hero1/400/225", rating: "4.9", price: 40 },
+  { id: "hero-2", title: "Email Sequence Builder", description: "Create launch email flows with tone controls.", previewImage: "https://picsum.photos/seed/hero2/400/225", rating: "4.8", price: 55 },
+  { id: "hero-3", title: "YouTube Script Blueprint", description: "Turn ideas into hooks, outlines, and CTA.", previewImage: "https://picsum.photos/seed/hero3/400/225", rating: "5.0", price: 60 },
+  { id: "hero-4", title: "SEO Article Generator", description: "Build optimized long-form drafts quickly.", previewImage: "https://picsum.photos/seed/hero4/400/225", rating: "4.7", price: 45 },
+];
 
 function Reveal({ children, className = "", variants = fadeUp }) {
   const ref = useRef(null);
@@ -82,10 +87,10 @@ function AnimatedHeroCards({ prompts }) {
     return () => container.removeEventListener('wheel', handleWheel);
   }, []);
 
-  const cards = [...(prompts || [])];
-  if (cards.length === 0) return null;
+  const sourceCards = prompts?.length ? prompts : heroFallbackCards;
+  const cards = [...sourceCards];
   while (cards.length < 4) {
-    cards.push(cards[cards.length % prompts.length]);
+    cards.push(sourceCards[cards.length % sourceCards.length]);
   }
   const displayCards = cards.slice(0, 4);
 
@@ -136,8 +141,33 @@ function AnimatedHeroCards({ prompts }) {
 function Home() {
   const { data: featured, isLoading } = useQuery({ queryKey: ["featured"], queryFn: fetchFeaturedPrompts });
   const { data: stats } = useQuery({ queryKey: ["stats"], queryFn: fetchStats });
+  const { data: categoryData } = useQuery({
+    queryKey: ["prompt-categories"],
+    queryFn: async () => (await api.get("/prompts/categories")).data,
+  });
+  const { data: testimonialsData } = useQuery({
+    queryKey: ["home-testimonials", featured?.length],
+    enabled: Boolean(featured?.length),
+    queryFn: async () => {
+      const promptIds = (featured || []).slice(0, 4).map((p) => p._id || p.id);
+      const reviews = await Promise.all(
+        promptIds.map(async (promptId) => (await api.get(`/prompts/${promptId}/reviews`)).data.reviews || [])
+      );
+      return reviews.flat().slice(0, 6);
+    },
+  });
   const barHeights = ["h-16", "h-24", "h-14", "h-28", "h-20", "h-32", "h-24"];
+  const categories = categoryData?.categories || [];
   const displayStats = stats || { prompts: 2400, creators: 840, generations: 18000, avgRating: 4.9 };
+  const testimonials = (testimonialsData || []).map((review) => ({
+    name: review.reviewer?.name || "Xypher user",
+    role: "Prompt Buyer",
+    company: "Marketplace",
+    text: review.text,
+    rating: review.rating || 5,
+    avatarInitials: (review.reviewer?.name || "Xypher User").split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase(),
+    avatarColor: "#6366F1",
+  }));
 
   return (
     <>
@@ -159,7 +189,7 @@ function Home() {
           </motion.div>
           <div className="relative hidden h-[500px] lg:-mt-[90px] lg:block">
             <div className="absolute left-1/2 top-1/2 h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-500/25 blur-3xl" />
-            {featured && <AnimatedHeroCards prompts={featured} />}
+            <AnimatedHeroCards prompts={featured} />
           </div>
         </div>
       </section>

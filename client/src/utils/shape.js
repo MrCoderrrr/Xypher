@@ -4,7 +4,7 @@ export const promptView = (p = {}) => ({
   description: p.description,
   category: p.category,
   price: p.price,
-  creatorName: p.creator?.name || p.creatorName,
+  creatorName: p.creator?.name || p.ownerName || p.creatorName || "Unknown owner",
   creatorAvatar: p.creator?.avatar || p.creatorAvatar,
   salesCount: p.salesCount || 0,
   rating: Number(p.rating || 0).toFixed(1),

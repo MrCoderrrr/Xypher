@@ -12,6 +12,7 @@ const promptSchema = new mongoose.Schema(
     previewImage: String,
     price: { type: Number, required: true },
     creator: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    ownerName: { type: String, trim: true },
     status: { type: String, enum: ["pending", "approved", "rejected"], default: "pending" },
     adminNote: String,
     salesCount: { type: Number, default: 0 },

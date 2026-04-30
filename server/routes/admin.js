@@ -11,10 +11,33 @@ router.use(requireAuth, isAdmin);
 
 router.get("/stats", async (req, res, next) => {
   try {
-    const [users, creators, prompts, pendingPrompts, pendingPayouts, generations, purchases] = await Promise.all([
-      User.countDocuments(), User.countDocuments({ role: "creator" }), Prompt.countDocuments(), Prompt.countDocuments({ status: "pending" }), Payout.countDocuments({ status: "pending" }), Generation.countDocuments(), Purchase.find(),
+    const [users, creators, prompts, pendingPrompts, pendingPayouts, generations, earningsAgg] = await Promise.all([
+      User.countDocuments(),
+      User.countDocuments({ role: "creator" }),
+      Prompt.countDocuments(),
+      Prompt.countDocuments({ status: "pending" }),
+      Payout.countDocuments({ status: "pending" }),
+      Generation.countDocuments(),
+      Purchase.aggregate([
+        {
+          $group: {
+            _id: null,
+            platformEarnings: { $sum: { $ifNull: ["$platformEarnings", 0] } },
+          },
+        },
+      ]),
     ]);
-    res.json({ stats: { users, creators, prompts, pendingPrompts, pendingPayouts, generations, platformEarnings: purchases.reduce((s, p) => s + (p.platformEarnings || 0), 0) } });
+    res.json({
+      stats: {
+        users,
+        creators,
+        prompts,
+        pendingPrompts,
+        pendingPayouts,
+        generations,
+        platformEarnings: earningsAgg[0]?.platformEarnings || 0,
+      },
+    });
   } catch (e) { next(e); }
 });
 router.get("/", (req, res) => res.redirect("/api/admin/stats"));
