@@ -1,10 +1,11 @@
 const express = require("express");
+const mongoose = require("mongoose");
 const Prompt = require("../models/Prompt");
 const Purchase = require("../models/Purchase");
 const Review = require("../models/Review");
 const User = require("../models/User");
 const TokenTransaction = require("../models/TokenTransaction");
-const { requireAuth, isCreator } = require("../middleware/auth");
+const { requireAuth, attachOptionalAuth, isCreator } = require("../middleware/auth");
 
 const router = express.Router();
 
@@ -15,10 +16,16 @@ router.get("/categories", async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-router.get("/", async (req, res, next) => {
+router.get("/", attachOptionalAuth, async (req, res, next) => {
   try {
     const { category, search, sort = "newest", page = 1, limit = 9, status } = req.query;
-    const filter = { status: status || "approved" };
+    const requestedStatus = String(status || "").trim();
+    const allowedCreatorStatuses = ["pending", "approved", "rejected"];
+    const isAdminUser = req.user?.role === "admin";
+    const isCreatorUser = req.user?.role === "creator";
+    const canViewRequested = isAdminUser || (isCreatorUser && allowedCreatorStatuses.includes(requestedStatus));
+    const filter = { status: canViewRequested && requestedStatus ? requestedStatus : "approved" };
+    if (isCreatorUser && filter.status !== "approved") filter.creator = req.user._id;
     if (category) filter.category = category;
     if (search) filter.$or = [{ title: new RegExp(search, "i") }, { description: new RegExp(search, "i") }, { tags: new RegExp(search, "i") }];
     const sortMap = { newest: { createdAt: -1 }, popular: { salesCount: -1 }, rated: { rating: -1 }, priceLow: { price: 1 }, priceHigh: { price: -1 } };
@@ -77,15 +84,33 @@ router.post("/:id/purchase", requireAuth, async (req, res, next) => {
     const existing = await Purchase.findOne({ buyer: req.user._id, prompt: prompt._id });
     if (existing) return res.json({ purchase: existing });
     if (req.user.tokenBalance < prompt.price) return res.status(402).json({ message: "Insufficient tokens" });
-    req.user.tokenBalance -= prompt.price;
-    const purchase = await Purchase.create({ buyer: req.user._id, prompt: prompt._id, tokensSpent: prompt.price });
-    await Promise.all([
-      req.user.save(),
-      Prompt.findByIdAndUpdate(prompt._id, { $inc: { salesCount: 1 } }),
-      User.findByIdAndUpdate(prompt.creator, { $inc: { totalEarnings: purchase.creatorEarnings, availableBalance: purchase.creatorEarnings } }),
-      TokenTransaction.create({ user: req.user._id, type: "spend", amount: -prompt.price, referenceId: `purchase:${purchase._id}`, description: `Purchased ${prompt.title}` }),
-    ]);
-    res.status(201).json({ purchase, user: req.user });
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+      const debit = await User.findOneAndUpdate(
+        { _id: req.user._id, tokenBalance: { $gte: prompt.price } },
+        { $inc: { tokenBalance: -prompt.price } },
+        { new: true, session }
+      );
+      if (!debit) {
+        await session.abortTransaction();
+        return res.status(402).json({ message: "Insufficient tokens" });
+      }
+      const [purchase] = await Purchase.create([{ buyer: req.user._id, prompt: prompt._id, tokensSpent: prompt.price }], { session });
+      await Promise.all([
+        Prompt.findByIdAndUpdate(prompt._id, { $inc: { salesCount: 1 } }, { session }),
+        User.findByIdAndUpdate(prompt.creator, { $inc: { totalEarnings: purchase.creatorEarnings, availableBalance: purchase.creatorEarnings } }, { session }),
+        TokenTransaction.create([{ user: req.user._id, type: "spend", amount: -prompt.price, referenceId: `purchase:${purchase._id}`, description: `Purchased ${prompt.title}` }], { session }),
+      ]);
+      await session.commitTransaction();
+      req.user = debit;
+      res.status(201).json({ purchase, user: debit });
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      session.endSession();
+    }
   } catch (e) { next(e); }
 });
 
@@ -107,6 +132,14 @@ router.post("/:id/review", requireAuth, async (req, res, next) => {
     const avg = await Review.aggregate([{ $match: { prompt: review.prompt } }, { $group: { _id: "$prompt", rating: { $avg: "$rating" }, count: { $sum: 1 } } }]);
     await Prompt.findByIdAndUpdate(req.params.id, { rating: avg[0]?.rating || 0, ratingCount: avg[0]?.count || 0 });
     res.json({ review });
+  } catch (e) { next(e); }
+});
+
+router.get("/reviews/recent", async (req, res, next) => {
+  try {
+    const limit = Math.min(Number(req.query.limit || 6), 20);
+    const reviews = await Review.find().populate("reviewer", "name avatar").sort({ createdAt: -1 }).limit(limit);
+    res.json({ reviews });
   } catch (e) { next(e); }
 });
 

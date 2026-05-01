@@ -63,13 +63,12 @@ function NavItem({ item, onClick }) {
 
 function Shell({ children }) {
   const [open, setOpen] = useState(false);
-  const [role, setRole] = useState("Buyer");
   const [scrolled, setScrolled] = useState(false);
   const { user } = useAuth();
   const { scrollYProgress } = useScroll();
+  const role = user?.role === "admin" ? "Admin" : user?.role === "creator" ? "Creator" : "Buyer";
   const links = roleLinks[role];
-  const value = useMemo(() => ({ role, setRole }), [role]);
-  const cycleRole = () => setRole((current) => (current === "Buyer" ? "Creator" : current === "Creator" ? "Admin" : "Buyer"));
+  const value = useMemo(() => ({ role, setRole: () => { } }), [role]);
   useMotionValueEvent(scrollYProgress, "change", (latest) => setScrolled(latest > 0.02));
 
   return (
@@ -90,13 +89,9 @@ function Shell({ children }) {
 
             <div className="hidden items-center gap-3 md:flex">
               {user && <TokenBadge value={user.tokenBalance || 0} />}
-              <button
-                onClick={cycleRole}
-                className="rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-3 py-1.5 text-xs font-semibold text-indigo-300 hover:bg-indigo-500/20"
-                title="Demo: Click to switch role"
-              >
+              <span className="rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-3 py-1.5 text-xs font-semibold text-indigo-300">
                 {role}
-              </button>
+              </span>
               <AuthButtons />
             </div>
 
@@ -108,13 +103,10 @@ function Shell({ children }) {
           {open && (
             <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="border-t border-border bg-bg-elevated/95 px-6 py-4 backdrop-blur-xl md:hidden">
               <div className="mb-3 flex items-center justify-between">
-                <span className="text-sm text-text-muted">Demo Mode</span>
-                <button
-                  onClick={() => cycleRole()}
-                  className="rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-3 py-1.5 text-xs font-semibold text-indigo-300"
-                >
+                <span className="text-sm text-text-muted">Portal</span>
+                <span className="rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-3 py-1.5 text-xs font-semibold text-indigo-300">
                   {role}
-                </button>
+                </span>
               </div>
               <nav className="flex flex-col gap-2">{links.map((item) => <NavItem key={item.to} item={item} onClick={() => setOpen(false)} />)}</nav>
               <div className="mt-4"><AuthButtons /></div>

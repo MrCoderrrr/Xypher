@@ -6,6 +6,8 @@ import { useAuth } from "../context/AuthContext";
 
 function LoginPage({ mode }) {
   const isRegister = mode === "register";
+  const portalRole = mode?.startsWith("login:") ? mode.split(":")[1] : null;
+  const portalLabel = portalRole ? `${portalRole[0].toUpperCase()}${portalRole.slice(1)}` : null;
   const { login, register } = useAuth();
   const [show, setShow] = useState(false);
   const [role, setRole] = useState("buyer");
@@ -70,9 +72,9 @@ function LoginPage({ mode }) {
 
     try {
       if (isRegister) {
-        await register(form.name, form.email, form.password, role);
+        await register(form.name, form.email, form.password, role, role);
       } else {
-        await login(form.email, form.password);
+        await login(form.email, form.password, portalRole || undefined);
       }
       console.log(`[Signup Debug] ${isRegister ? "Registration" : "Login"} successful`);
     } catch (err) {
@@ -89,7 +91,9 @@ function LoginPage({ mode }) {
       <div className="absolute h-80 w-80 rounded-full bg-indigo-500/20 blur-3xl" />
       <form onSubmit={submit} className="relative w-full max-w-md rounded-2xl border border-border bg-bg-card p-8 shadow-2xl">
         <Link to="/" className="block text-center font-heading text-3xl font-black"><span className="text-white">Xy</span><span className="bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">pher</span></Link>
-        <h1 className="mt-8 text-center font-heading text-3xl font-bold">{isRegister ? "Create your account" : "Welcome back"}</h1>
+        <h1 className="mt-8 text-center font-heading text-3xl font-bold">
+          {isRegister ? "Create your account" : `Welcome back${portalLabel ? ` (${portalLabel} Portal)` : ""}`}
+        </h1>
         <p className="mt-2 text-center text-text-muted">{isRegister ? "Join Xypher today" : "Sign in to your account"}</p>
 
         {errors.general && (
@@ -135,7 +139,17 @@ function LoginPage({ mode }) {
         {!isRegister && <button type="button" className="mt-3 text-sm text-cyan">Forgot password?</button>}
         <Button type="submit" loading={loading} className="mt-6 w-full">{isRegister ? "Create Account" : "Sign In"}</Button>
         <div className="my-6 flex items-center gap-3 text-text-muted"><span className="h-px flex-1 bg-border" />or<span className="h-px flex-1 bg-border" /></div>
-        <p className="text-center text-sm text-text-muted">{isRegister ? "Already have an account?" : "Don't have an account?"} <Link className="text-cyan" to={isRegister ? "/login" : "/register"}>{isRegister ? "Sign in" : "Sign up"}</Link></p>
+        <p className="text-center text-sm text-text-muted">{isRegister ? "Already have an account?" : "Don't have an account?"} <Link className="text-cyan" to={isRegister ? "/login/buyer" : "/register"}>{isRegister ? "Sign in" : "Sign up"}</Link></p>
+        {!isRegister && (
+          <div className="mt-4 border-t border-border pt-4 text-center text-xs text-text-muted">
+            <span className="mr-2">Switch portal:</span>
+            <Link className="text-cyan hover:underline" to="/login/buyer">Buyer</Link>
+            <span className="mx-2">|</span>
+            <Link className="text-cyan hover:underline" to="/login/creator">Creator</Link>
+            <span className="mx-2">|</span>
+            <Link className="text-cyan hover:underline" to="/login/admin">Admin</Link>
+          </div>
+        )}
       </form>
     </section>
   );

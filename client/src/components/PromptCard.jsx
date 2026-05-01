@@ -23,7 +23,7 @@ function PromptCard({
   rating,
   previewImage,
   isOwned,
-  likes = 128,
+  likes = 0,
   showLike = false,
   initialLiked = false,
   layout = "grid",

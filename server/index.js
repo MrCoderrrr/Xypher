@@ -36,7 +36,11 @@ app.use(cors({
   allowedHeaders: ["Content-Type", "Authorization"],
 }));
 
-app.use(express.json());
+app.use(express.json({
+  verify: (req, res, buf) => {
+    req.rawBody = buf;
+  },
+}));
 
 app.use("/api/auth", authRoutes);
 app.use("/api/prompts", promptRoutes);

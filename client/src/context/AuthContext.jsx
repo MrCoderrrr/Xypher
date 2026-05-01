@@ -17,9 +17,9 @@ export function AuthProvider({ children }) {
     setUser(data.user);
     navigate(home(data.user.role));
   };
-  const login = async (email, password) => save((await api.post("/auth/login", { email, password })).data);
-  const register = async (name, email, password, role) => save((await api.post("/auth/register", { name, email, password, role })).data);
-  const logout = () => { localStorage.removeItem("xypher_token"); setToken(null); setUser(null); navigate("/login"); };
+  const login = async (email, password, expectedRole) => save((await api.post("/auth/login", { email, password, expectedRole })).data);
+  const register = async (name, email, password, role, expectedRole = role) => save((await api.post("/auth/register", { name, email, password, role, expectedRole })).data);
+  const logout = () => { localStorage.removeItem("xypher_token"); setToken(null); setUser(null); navigate("/login/buyer"); };
   const fetchMe = async () => {
     try { setUser((await api.get("/auth/me")).data.user); } finally { setLoading(false); }
   };

@@ -8,6 +8,52 @@ const { requireAuth } = require("../middleware/auth");
 
 const router = express.Router();
 
+router.get("/stats", async (req, res, next) => {
+  try {
+    const [prompts, creators, generations, avgAgg, earningsAgg] = await Promise.all([
+      Prompt.countDocuments({ status: "approved" }),
+      User.countDocuments({ role: "creator" }),
+      Generation.countDocuments(),
+      Prompt.aggregate([{ $match: { status: "approved" } }, { $group: { _id: null, avgRating: { $avg: "$rating" } } }]),
+      Purchase.aggregate([{ $group: { _id: null, creatorEarnings: { $sum: { $ifNull: ["$creatorEarnings", 0] } } } }]),
+    ]);
+    const today = new Date();
+    const start = new Date(today);
+    start.setDate(today.getDate() - 6);
+    start.setHours(0, 0, 0, 0);
+    const trend = await Generation.aggregate([
+      { $match: { createdAt: { $gte: start } } },
+      {
+        $group: {
+          _id: {
+            y: { $year: "$createdAt" },
+            m: { $month: "$createdAt" },
+            d: { $dayOfMonth: "$createdAt" },
+          },
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+    const map = new Map(trend.map((row) => [`${row._id.y}-${row._id.m}-${row._id.d}`, row.count]));
+    const weeklyGenerations = Array.from({ length: 7 }).map((_, idx) => {
+      const day = new Date(start);
+      day.setDate(start.getDate() + idx);
+      const key = `${day.getFullYear()}-${day.getMonth() + 1}-${day.getDate()}`;
+      return map.get(key) || 0;
+    });
+    res.json({
+      stats: {
+        prompts,
+        creators,
+        generations,
+        avgRating: Number(avgAgg[0]?.avgRating || 0),
+        creatorEarnings: Number(earningsAgg[0]?.creatorEarnings || 0),
+        weeklyGenerations,
+      },
+    });
+  } catch (e) { next(e); }
+});
+
 router.get("/creators", async (req, res, next) => {
   try {
     const { search = "", page = 1, limit = 12, sort = "top", minRating = 0, minSales = 0 } = req.query;
@@ -129,11 +175,38 @@ router.get("/dashboard", requireAuth, async (req, res, next) => {
     const pStats = purchaseStats[0] || { promptsOwned: 0, tokensSpent: 0 };
     const prStats = promptStats[0] || { livePrompts: 0, totalSales: 0 };
 
+    const recentPeriodStart = new Date();
+    recentPeriodStart.setDate(recentPeriodStart.getDate() - 7);
+    const previousPeriodStart = new Date(recentPeriodStart);
+    previousPeriodStart.setDate(previousPeriodStart.getDate() - 7);
+    const [recentGen, previousGen, recentSpend, previousSpend] = await Promise.all([
+      Generation.countDocuments({ user: userId, createdAt: { $gte: recentPeriodStart } }),
+      Generation.countDocuments({ user: userId, createdAt: { $gte: previousPeriodStart, $lt: recentPeriodStart } }),
+      Purchase.aggregate([
+        { $match: { buyer: userId, createdAt: { $gte: recentPeriodStart } } },
+        { $group: { _id: null, total: { $sum: { $ifNull: ["$tokensSpent", 0] } } } },
+      ]),
+      Purchase.aggregate([
+        { $match: { buyer: userId, createdAt: { $gte: previousPeriodStart, $lt: recentPeriodStart } } },
+        { $group: { _id: null, total: { $sum: { $ifNull: ["$tokensSpent", 0] } } } },
+      ]),
+    ]);
+    const tokenSpendNow = Number(recentSpend[0]?.total || 0);
+    const tokenSpendPrev = Number(previousSpend[0]?.total || 0);
+    const trendPct = (now, prev) => (prev <= 0 ? (now > 0 ? 100 : 0) : Math.round(((now - prev) / prev) * 100));
+    const activity = transactions.slice(0, 8).map((item) => ({
+      id: item._id,
+      type: item.type,
+      amount: item.amount,
+      description: item.description,
+      createdAt: item.createdAt,
+    }));
     res.json({
       user: req.user,
       purchases,
       generations,
       transactions,
+      activity,
       prompts,
       stats: {
         promptsOwned: pStats.promptsOwned,
@@ -141,6 +214,14 @@ router.get("/dashboard", requireAuth, async (req, res, next) => {
         tokensSpent: pStats.tokensSpent,
         livePrompts: prStats.livePrompts,
         totalSales: prStats.totalSales,
+        trend: {
+          generationsWeeklyPercent: trendPct(recentGen, previousGen),
+          tokensWeeklyPercent: trendPct(tokenSpendNow, tokenSpendPrev),
+          recentGenerations: recentGen,
+          previousGenerations: previousGen,
+          recentTokenSpend: tokenSpendNow,
+          previousTokenSpend: tokenSpendPrev,
+        },
       },
     });
   } catch (e) { next(e); }

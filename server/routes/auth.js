@@ -16,6 +16,7 @@ router.post("/register", async (req, res, next) => {
     const email = String(req.body.email || "").trim().toLowerCase();
     const password = String(req.body.password || "");
     const role = req.body.role || "buyer";
+    const expectedRole = req.body.expectedRole || role;
 
     console.log("[Auth Debug] Parsed values:", { name: name || "(empty)", email: email || "(empty)", passwordLength: password.length, role });
 
@@ -30,6 +31,9 @@ router.post("/register", async (req, res, next) => {
     if (!["buyer", "creator"].includes(role)) {
       console.log("[Auth Debug] Validation failed: Invalid role");
       return res.status(400).json({ message: "Invalid role" });
+    }
+    if (expectedRole && role !== expectedRole) {
+      return res.status(400).json({ message: "Role mismatch for this portal" });
     }
     if (mongoose.connection.readyState !== 1) {
       console.log("[Auth Debug] MongoDB not connected, using in-memory storage");
@@ -82,11 +86,33 @@ router.post("/register", async (req, res, next) => {
 router.post("/login", async (req, res, next) => {
   try {
     const email = String(req.body.email || "").trim().toLowerCase();
+    const expectedRole = String(req.body.expectedRole || "").trim().toLowerCase();
     const user = mongoose.connection.readyState === 1
       ? await User.findOne({ email }).select("+password")
       : global.xypherUsers.find((item) => item.email === email);
     if (!user || !(await bcrypt.compare(req.body.password || "", user.password))) return res.status(401).json({ message: "Invalid credentials" });
+    if (expectedRole && user.role !== expectedRole) return res.status(403).json({ message: `This account belongs to ${user.role}. Please use the correct portal.` });
     res.json({ token: signToken(user), user: clean(user) });
+  } catch (e) { next(e); }
+});
+
+router.post("/bootstrap-admin", async (req, res, next) => {
+  try {
+    const secret = String(req.body.secret || "");
+    if (!process.env.ADMIN_BOOTSTRAP_SECRET || secret !== process.env.ADMIN_BOOTSTRAP_SECRET) {
+      return res.status(403).json({ message: "Invalid bootstrap secret" });
+    }
+    const email = String(req.body.email || "").trim().toLowerCase();
+    if (!email) return res.status(400).json({ message: "Email is required" });
+    const user = mongoose.connection.readyState === 1
+      ? await User.findOneAndUpdate({ email }, { role: "admin", isCreator: true }, { new: true })
+      : global.xypherUsers.find((item) => item.email === email);
+    if (!user) return res.status(404).json({ message: "User not found" });
+    if (mongoose.connection.readyState !== 1) {
+      user.role = "admin";
+      user.isCreator = true;
+    }
+    res.json({ user: clean(user), message: "User promoted to admin" });
   } catch (e) { next(e); }
 });
 

@@ -19,6 +19,12 @@ function UserDashboard() {
   const stats = dashboard?.stats || {};
   const purchases = dashboard?.purchases || [];
   const generations = dashboard?.generations || [];
+  const trend = stats?.trend || {};
+  const formatTrend = (value) => {
+    if (value === undefined || value === null) return undefined;
+    const rounded = Math.round(value);
+    return `${rounded >= 0 ? "+" : ""}${rounded}%`;
+  };
   return (
     <section className="mx-auto max-w-[1400px] px-4 py-10 sm:px-6 lg:px-8">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
@@ -26,10 +32,10 @@ function UserDashboard() {
         <div className="flex gap-3"><Link to="/pricing"><Button>Buy Tokens</Button></Link><Link to="/explore"><Button variant="secondary">Explore Prompts</Button></Link></div>
       </div>
       <div className="mt-8 grid gap-4 md:grid-cols-4">
-        <StatCard icon={Wallet} label="Token balance" value={(user?.tokenBalance || 0).toLocaleString()} trend="+22%" />
-        <StatCard icon={Library} label="Prompts owned" value={stats.promptsOwned || 0} trend="+3" />
-        <StatCard icon={Sparkles} label="Generations run" value={stats.generationsRun || 0} trend="+8%" />
-        <StatCard icon={IndianRupee} label="Money saved" value={`₹${((stats.tokensSpent || 0) * 10).toLocaleString()}`} trend="+14%" />
+        <StatCard icon={Wallet} label="Token balance" value={(user?.tokenBalance || 0).toLocaleString()} />
+        <StatCard icon={Library} label="Prompts owned" value={stats.promptsOwned || 0} />
+        <StatCard icon={Sparkles} label="Generations run" value={stats.generationsRun || 0} trend={formatTrend(trend.generationsWeeklyPercent)} />
+        <StatCard icon={IndianRupee} label="Money saved" value={`₹${((stats.tokensSpent || 0) * 10).toLocaleString()}`} trend={formatTrend(trend.tokensWeeklyPercent)} />
       </div>
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
         <div className="rounded-xl border border-border bg-bg-card p-6"><h2 className="font-heading text-xl font-semibold">Recent Activity</h2><div className="mt-5 space-y-4">{purchases.slice(0, 5).map((purchase, index) => { const prompt = purchase.prompt; const ownerName = prompt?.creator?.name || prompt?.ownerName || "Unknown owner"; return <motion.div initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.05 }} key={purchase._id || index} className="flex gap-4 border-l border-indigo-500/30 pl-4"><ShoppingBag className="mt-1 text-indigo-400" size={18} /><div><p className="font-semibold">{prompt?.title || "Unknown Prompt"}</p><p className="text-sm text-text-muted">Owner: {ownerName}</p><p className="text-sm text-text-muted">{new Date(purchase.createdAt).toLocaleDateString()} · {purchase.tokensSpent} tokens spent</p></div></motion.div>; })}</div></div>

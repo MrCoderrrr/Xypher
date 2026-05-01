@@ -86,7 +86,10 @@ function Explore() {
             <Search size={16} />
             <input
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
               placeholder="Search prompts..."
               className="w-full bg-transparent py-3 outline-none placeholder:text-slate-600"
             />
@@ -95,7 +98,10 @@ function Explore() {
             {categories.map((c) => (
               <button
                 key={c}
-                onClick={() => setCategory(category === c ? "" : c)}
+                onClick={() => {
+                  setCategory(category === c ? "" : c);
+                  setPage(1);
+                }}
                 className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-all ${
                   category === c
                     ? "border-indigo-500 bg-indigo-500/20 text-indigo-300"
@@ -108,7 +114,10 @@ function Explore() {
           </div>
           <select
             value={sort}
-            onChange={(e) => setSort(e.target.value)}
+            onChange={(e) => {
+              setSort(e.target.value);
+              setPage(1);
+            }}
             className="mt-6 w-full rounded-xl border border-border bg-bg-card px-4 py-3 outline-none"
           >
             <option value="newest">Newest</option>

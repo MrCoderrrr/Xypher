@@ -36,16 +36,19 @@ function App() {
         >
           <Routes location={location}>
             <Route path="/" element={<Home />} />
-            <Route path="/login" element={<LoginPage mode="login" />} />
+            <Route path="/login" element={<LoginPage mode="login:buyer" />} />
+            <Route path="/login/buyer" element={<LoginPage mode="login:buyer" />} />
+            <Route path="/login/creator" element={<LoginPage mode="login:creator" />} />
+            <Route path="/login/admin" element={<LoginPage mode="login:admin" />} />
             <Route path="/register" element={<LoginPage mode="register" />} />
             <Route path="/explore" element={<Explore />} />
             <Route path="/creators" element={<Creators />} />
             <Route path="/prompt/:id" element={<PromptDetail />} />
-            <Route path="/generate/:id" element={<ProtectedRoute><Generate /></ProtectedRoute>} />
+            <Route path="/generate/:id" element={<ProtectedRoute roles={["buyer"]}><Generate /></ProtectedRoute>} />
             <Route path="/creator/:id" element={<CreatorProfile />} />
             <Route path="/pricing" element={<Pricing />} />
-            <Route path="/dashboard" element={<ProtectedRoute><UserDashboard /></ProtectedRoute>} />
-            <Route path="/library" element={<ProtectedRoute><Library /></ProtectedRoute>} />
+            <Route path="/dashboard" element={<ProtectedRoute roles={["buyer"]}><UserDashboard /></ProtectedRoute>} />
+            <Route path="/library" element={<ProtectedRoute roles={["buyer"]}><Library /></ProtectedRoute>} />
             <Route path="/creator-dashboard" element={<ProtectedRoute roles={["creator", "admin"]}><CreatorDashboard /></ProtectedRoute>} />
             <Route path="/creator/analytics" element={<ProtectedRoute roles={["creator", "admin"]}><CreatorDashboard /></ProtectedRoute>} />
             <Route path="/upload" element={<ProtectedRoute roles={["creator", "admin"]}><UploadPrompt /></ProtectedRoute>} />
